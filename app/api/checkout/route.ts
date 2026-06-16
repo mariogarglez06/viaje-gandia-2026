@@ -1,11 +1,20 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
-  const formData = await request.formData();
+  if (!process.env.STRIPE_SECRET_KEY) {
+    return NextResponse.json(
+      { error: "Falta STRIPE_SECRET_KEY" },
+      { status: 500 }
+    );
+  }
 
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+  const formData = await request.formData();
   const nombre = formData.get("nombre")?.toString().trim();
 
   if (!nombre) {
@@ -17,21 +26,17 @@ export async function POST(request: Request) {
 
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
-
     payment_method_types: ["card"],
-
     metadata: {
       nombre,
       concepto: "Viaje de la masonada",
     },
-
     payment_intent_data: {
       metadata: {
         nombre,
         concepto: "Viaje de la masonada",
       },
     },
-
     line_items: [
       {
         price_data: {
@@ -44,7 +49,6 @@ export async function POST(request: Request) {
         quantity: 1,
       },
     ],
-
     success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/success`,
     cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/cancel`,
   });
